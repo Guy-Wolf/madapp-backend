@@ -42,6 +42,7 @@ class UserInfo(BaseModel):
     birth_date: str
     user_city: str
     user_street: str
+    disabled: bool = False
 
 class EventInfo(BaseModel):
     eid: int
@@ -79,10 +80,21 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
+def convert_mysql_dict_to_user_dict(mysql_dict):
+    return {'first_name': mysql_dict['FIRST_NAME'], 
+            'last_name': mysql_dict['LAST_NAME'], 
+            'birth_date': str(mysql_dict['BIRTH']), 
+            'user_city': mysql_dict['CITY'], 
+            'user_street': mysql_dict['STREET'], 
+            'disabled': False}
+
+
 def get_user(db, username: str):
+    print("here!!")
     if db.is_user_exists(username):
         user_dict = db.get_user_data_by_mail(username)
-        return user_dict
+        user_info_dict = convert_mysql_dict_to_user_dict(user_dict)
+        return UserInfo(**user_info_dict)
 
 
 def authenticate_user(db, username: str, password: str):
@@ -178,16 +190,17 @@ async def register_for_access_token(
     return {"access_token": access_token, "token_type": "bearer"}
 
 
-@app.get("/users/me/", response_model=User)
+@app.get("/users/me/", response_model=UserInfo)
 async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     return current_user
 
-@app.post("/add/event", responser_model=bool)
+@app.post("/add/event", response_model=bool)
 async def add_event(
     event_info: Annotated[EventInfo, Depends(get_current_active_user)]
 ):
+    DB_CON.add_event(EventInfo)
     
     
 @app.get("/users/me/items/")
