@@ -1,3 +1,4 @@
+# AE SD
 import pymysql.cursors
 
 
@@ -45,6 +46,14 @@ class MdaappDB(object):
 
     def __get_ident_id_by_mail(self, user_mail):
         command = "SELECT * FROM identification where USER_MAIL = '{0}'".format(user_mail)
+        print(command)
+        result = self.__execute_command(command)
+        return result
+
+    def get_user_data_by_mail(self, user_mail):
+        user_id = self.__get_ident_id_by_mail(user_mail)['USER_ID']
+        import pdb;pdb.set_trace()
+        command = "SELECT * FROM basicinfo where USER_ID = '{0}'".format(user_id)
         print(command)
         result = self.__execute_command(command)
         return result
