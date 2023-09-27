@@ -7,6 +7,8 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from pydantic import BaseModel
 
+import mdaappDB
+
 # to get a string like this run:
 # openssl rand -hex 32
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
@@ -26,6 +28,7 @@ fake_users_db = {
     }
 }
 
+DB_CON = mdaappDB()
 
 class Token(BaseModel):
     access_token: str
@@ -72,7 +75,7 @@ def get_user(db, username: str):
         return UserInDB(**user_dict)
 
 
-def authenticate_user(fake_db, username: str, password: str):
+def authenticate_user(db=DB, username: str, password: str):
     user = get_user(fake_db, username)
     if not user:
         return False
