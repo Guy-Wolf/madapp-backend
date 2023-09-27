@@ -20,7 +20,7 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 connected_users = {}
 
 
-DB_CON = mdaappDB()
+DB_CON = mdaappDB.MdaappDB()
 
 class Token(BaseModel):
     access_token: str
@@ -54,6 +54,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 app = FastAPI()
 
+origins = ["*"]
 
 # cors handeling
 app.add_middleware(
@@ -75,8 +76,8 @@ def get_password_hash(password):
 
 def get_user(db, username: str):
     if db.is_user_exists(username):
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+        user_dict = db.get_user_data_by_mail(username)
+        return user_dict
 
 
 def authenticate_user(db, username: str, password: str):
@@ -87,11 +88,11 @@ def authenticate_user(db, username: str, password: str):
         return False
     return True
 
-def add_user(db, password: str, signup_info: UserInfo):
-    user_exists = db.is_user_exists(signup_info.username)
-    if not user_exists:
+def add_user(db, username: str, password: str, signup_info: UserInfo):
+    user_exists = db.is_user_exists(username)
+    if user_exists:
         return False
-    db.add_user(signup_info.username, password, signup_info.fast_name, signup_info.first_name, signup_info.birth_date,
+    db.add_user(username, password, signup_info.first_name, signup_info.last_name, signup_info.birth_date,
                 signup_info.user_city, signup_info.user_street)
     return True
 
