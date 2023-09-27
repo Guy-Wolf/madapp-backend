@@ -149,6 +149,7 @@ class MdaappDB(object):
     def log_event(self, user_mail, event_id, mood, notes):
         user_id = self.__get_ident_id_by_mail(user_mail)
         if user_id:
-            return self.__insert_data('participants',(user_id['USER_ID'],event_id,mood,notes))
+            if self.__insert_data('participants',(user_id['USER_ID'],event_id,mood,notes)) is None:
+                return True
         return False
     

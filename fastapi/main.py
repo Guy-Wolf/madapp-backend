@@ -184,7 +184,7 @@ async def add_event(
             detail="Event doesn't exist",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    return 
+    return True
     
     
 @app.post("/register", response_model=Token)
