@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -18,15 +19,6 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 connected_users = {}
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "full_name": "John Doe",
-        "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",
-        "disabled": False,
-    }
-}
 
 DB_CON = mdaappDB()
 
@@ -42,12 +34,14 @@ class TokenData(BaseModel):
 class User(BaseModel):
     username: str
     email: str | None = None
-    full_name: str | None = None
     disabled: bool | None = None
 
 class UserInfo(BaseModel):
-    email: str 
-    full_name: str 
+    first_name: str 
+    last_name: str 
+    birth_date: str
+    user_city: str
+    user_street: str
 
 
 class UserInDB(User):
@@ -61,6 +55,16 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 app = FastAPI()
 
 
+# cors handeling
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)
 
@@ -70,25 +74,25 @@ def get_password_hash(password):
 
 
 def get_user(db, username: str):
-    if username in db:
+    if db.is_user_exists(username):
         user_dict = db[username]
         return UserInDB(**user_dict)
 
 
-def authenticate_user(db=DB, username: str, password: str):
-    user = get_user(fake_db, username)
-    if not user:
+def authenticate_user(db, username: str, password: str):
+    user_exists = db.is_user_exists(username)
+    if not user_exists:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not db.check_user_creds(username, password):
         return False
-    return user
+    return True
 
-def add_user(fake_db, username: str, password: str, email: str, full_name: str):
-    user = get_user(fake_db, username)
-    if user:
+def add_user(db, password: str, signup_info: UserInfo):
+    user_exists = db.is_user_exists(signup_info.username)
+    if not user_exists:
         return False
-    hashed_password = get_password_hash(password)
-    fake_db[username] = {"username": username, "full_name": full_name, "email": email, "hashed_password": hashed_password, "disabled": False}
+    db.add_user(signup_info.username, password, signup_info.fast_name, signup_info.first_name, signup_info.birth_date,
+                signup_info.user_city, signup_info.user_street)
     return True
 
 
@@ -117,7 +121,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = get_user(DB_CON, username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
@@ -135,7 +139,7 @@ async def get_current_active_user(
 async def login_for_access_token(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+    user = authenticate_user(DB_CON, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -144,7 +148,7 @@ async def login_for_access_token(
         )
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
+        data={"sub": form_data.username}, expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
@@ -154,7 +158,7 @@ async def register_for_access_token(
     signup_info: Annotated[UserInfo, Depends()],
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()]
 ):
-    user = add_user(fake_users_db, form_data.username, form_data.password, signup_info.email, signup_info.full_name)
+    user = add_user(DB_CON, form_data.username, form_data.password, signup_info)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
