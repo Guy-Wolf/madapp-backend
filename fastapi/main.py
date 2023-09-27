@@ -170,7 +170,13 @@ async def login_for_access_token(
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-
+@app.post("/add/event", response_model=bool)
+async def add_event(
+    event_info: Annotated[EventInfo, Depends(get_current_active_user)]
+):
+    return DB_CON.add_event(event_info)
+    
+    
 @app.post("/register", response_model=Token)
 async def register_for_access_token(
     signup_info: Annotated[UserInfo, Depends()],
@@ -196,13 +202,6 @@ async def read_users_me(
 ):
     return current_user
 
-@app.post("/add/event", response_model=bool)
-async def add_event(
-    event_info: Annotated[EventInfo, Depends(get_current_active_user)]
-):
-    DB_CON.add_event(EventInfo)
-    
-    
 @app.get("/users/me/items/")
 async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)]
