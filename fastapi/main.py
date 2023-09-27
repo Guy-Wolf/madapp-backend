@@ -37,7 +37,7 @@ class User(BaseModel):
     disabled: bool | None = None
 
 class UserInfo(BaseModel):
-    username: str
+    email: str
     first_name: str 
     last_name: str 
     birth_date: str
@@ -82,7 +82,7 @@ def get_password_hash(password):
 
 
 def convert_mysql_dict_to_user_dict(username, mysql_dict):
-    return {'username': username,
+    return {'email': username,
             'first_name': mysql_dict['FIRST_NAME'], 
             'last_name': mysql_dict['LAST_NAME'], 
             'birth_date': str(mysql_dict['BIRTH']), 
@@ -92,7 +92,6 @@ def convert_mysql_dict_to_user_dict(username, mysql_dict):
 
 
 def get_user(db, username: str):
-    print("here!!")
     if db.is_user_exists(username):
         user_dict = db.get_user_data_by_mail(username)
         user_info_dict = convert_mysql_dict_to_user_dict(username, user_dict)
@@ -177,7 +176,7 @@ async def add_event(
     current_user: Annotated[User, Depends(get_current_active_user)],
     event_info: Annotated[EventInfo, Depends()]
 ):
-    add_event_res = DB_CON.log_event(current_user.username, event_info.eid, event_info.mood, event_info.notes)
+    add_event_res = DB_CON.log_event(current_user.email, event_info.eid, event_info.mood, event_info.notes)
     if not add_event_res:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -211,9 +210,3 @@ async def read_users_me(
     current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     return current_user
-
-@app.get("/users/me/items/")
-async def read_own_items(
-    current_user: Annotated[User, Depends(get_current_active_user)]
-):
-    return [{"item_id": "Foo", "owner": current_user.username}]
