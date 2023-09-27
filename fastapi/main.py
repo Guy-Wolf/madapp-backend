@@ -43,6 +43,11 @@ class UserInfo(BaseModel):
     user_city: str
     user_street: str
 
+class EventInfo(BaseModel):
+    eid: int
+    mood: str
+    notes: str
+
 
 class UserInDB(User):
     hashed_password: str
@@ -179,7 +184,12 @@ async def read_users_me(
 ):
     return current_user
 
-
+@app.post("/add/event", responser_model=bool)
+async def add_event(
+    event_info: Annotated[EventInfo, Depends(get_current_active_user)]
+):
+    
+    
 @app.get("/users/me/items/")
 async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)]
