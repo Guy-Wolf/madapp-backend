@@ -37,6 +37,7 @@ class User(BaseModel):
     disabled: bool | None = None
 
 class UserInfo(BaseModel):
+    username: str
     first_name: str 
     last_name: str 
     birth_date: str
@@ -46,7 +47,7 @@ class UserInfo(BaseModel):
 
 class EventInfo(BaseModel):
     eid: int
-    mood: str
+    mood: int
     notes: str
 
 
@@ -80,8 +81,9 @@ def get_password_hash(password):
     return pwd_context.hash(password)
 
 
-def convert_mysql_dict_to_user_dict(mysql_dict):
-    return {'first_name': mysql_dict['FIRST_NAME'], 
+def convert_mysql_dict_to_user_dict(username, mysql_dict):
+    return {'username': username,
+            'first_name': mysql_dict['FIRST_NAME'], 
             'last_name': mysql_dict['LAST_NAME'], 
             'birth_date': str(mysql_dict['BIRTH']), 
             'user_city': mysql_dict['CITY'], 
@@ -93,7 +95,7 @@ def get_user(db, username: str):
     print("here!!")
     if db.is_user_exists(username):
         user_dict = db.get_user_data_by_mail(username)
-        user_info_dict = convert_mysql_dict_to_user_dict(user_dict)
+        user_info_dict = convert_mysql_dict_to_user_dict(username, user_dict)
         return UserInfo(**user_info_dict)
 
 
@@ -172,9 +174,17 @@ async def login_for_access_token(
 
 @app.post("/add/event", response_model=bool)
 async def add_event(
-    event_info: Annotated[EventInfo, Depends(get_current_active_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    event_info: Annotated[EventInfo, Depends()]
 ):
-    return DB_CON.add_event(event_info)
+    add_event_res = DB_CON.log_event(current_user.username, event_info.eid, event_info.mood, event_info.notes)
+    if not add_event_res:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Event doesn't exist",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    return 
     
     
 @app.post("/register", response_model=Token)
